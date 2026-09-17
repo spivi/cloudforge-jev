@@ -227,7 +227,7 @@ def _verdict(response: object) -> dict[str, object]:
         "Names the sink or the entry but not the connecting hop",
         "Names the entry, the identity hop, and the sink",
     )
-    idx = min(2, max(0, int(round(float(score.score)))))
+    idx = min(2, max(0, round(float(score.score))))
     uncertain = any(UNCERTAIN_LOW < p < UNCERTAIN_HIGH for p in (entry, hop, sink))
     return {
         "names_entry": entry,
