@@ -37,7 +37,8 @@ def main() -> int:
     lab_dir = _ensure_lab(args)
     state = _state(lab_dir, args.rationale.read_text(encoding="utf-8"))
     with TypeSafeClient(api_key=key, model=MODEL) as client:
-        response = client.system_one(state, _questions())
+        hop_kind = str(state["ground_truth"]["hop_kind"])  # type: ignore[index]
+        response = client.system_one(state, _questions(hop_kind))
     _print(_verdict(response))
     return 0
 
@@ -107,21 +108,83 @@ def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
     findings = json.loads((instructor / "expected_findings.json").read_text())
     primary = truth["paths"][0]
     names = {n["id"]: n["name"] for n in graph["nodes"]}
-    hops = [names[nid] for nid in primary["nodes"] if nid in names]
+    hops = _path_hops(graph["nodes"], list(primary["nodes"]), findings["findings"])
     return {
         "student": {"rationale": rationale.strip()},
         "ground_truth": {
             "explanation": primary["explanation"],
-            "entry_name": hops[0] if hops else "",
-            "identity_hop": hops[1] if len(hops) > 1 else "",
-            "sink_name": hops[-1] if hops else "",
-            "hop_names": hops,
+            "entry_name": hops["entry"],
+            "hop_name": hops["hop"],
+            "hop_kind": hops["hop_kind"],
+            "sink_name": hops["sink"],
+            "hop_names": [names[nid] for nid in primary["nodes"] if nid in names],
             "finding_families": sorted({f["family"] for f in findings["findings"]}),
         },
     }
 
 
-def _questions() -> dict[str, Noul | Score]:
+IDENTITY_TYPES = frozenset(
+    {
+        "IAMRole",
+        "IAMUser",
+        "IAMGroup",
+        "CICDIdentity",
+        "K8sServiceAccount",
+        "AzureManagedIdentity",
+        "GcpServiceAccount",
+        "GcpWorkloadIdentityPool",
+    }
+)
+
+
+def _path_hops(
+    nodes: list[dict[str, object]], path_ids: list[str], findings: list[dict[str, object]] | None = None
+) -> dict[str, str]:
+    """The three things a writeup must name, chosen by node type rather than position.
+
+    entry: the first node; an owning account means public, unauthenticated access, an
+    external account is named as such. hop: the first identity after the entry, or, when
+    the path has none (public bucket, shared snapshot, wildcard queue), the misconfigured
+    resource itself, described by its critical finding when the instructor pack has one
+    ("SQS queue policy allows wildcard principal ..."). sink: the last node.
+    """
+    by_id = {str(n["id"]): n for n in nodes}
+    chain = [by_id[i] for i in path_ids if i in by_id]
+    if not chain:
+        return {"entry": "", "hop": "", "hop_kind": "identity", "sink": ""}
+    entry, sink = chain[0], chain[-1]
+    entry_name = str(entry["name"])
+    if entry["type"] == "Account":
+        if entry_name.startswith("prod-account"):
+            entry_name = "anyone on the internet, unauthenticated"
+        else:
+            entry_name = f"the external account {entry_name}"
+    middle = chain[1:-1]
+    identity = next((n for n in middle if n["type"] in IDENTITY_TYPES), None)
+    if identity is not None:
+        hop, kind = str(identity["name"]), "identity"
+    elif middle:
+        resource = middle[0]
+        hop, kind = str(resource["name"]), "resource"
+        for finding in findings or []:
+            on_path = any(r in path_ids for r in finding.get("resource_ids", []))
+            if on_path and finding.get("severity") in ("critical", "high") and finding.get("ground_truth"):
+                hop = f"{resource['name']}: {finding['ground_truth']}"
+                break
+    else:
+        hop, kind = "", "identity"
+    return {"entry": entry_name, "hop": hop, "hop_kind": kind, "sink": str(sink["name"])}
+
+
+def _questions(hop_kind: str) -> dict[str, Noul | Score]:
+    hop_question = (
+        "Does `student.rationale` describe the identity or role hop named in `ground_truth.hop_name`?"
+        if hop_kind == "identity"
+        else (
+            "Does `student.rationale` describe the misconfiguration in "
+            "`ground_truth.hop_name` as what opens the access?"
+        )
+    )
     return {
         "names_entry": Noul(
             instructions=(
@@ -129,12 +192,7 @@ def _questions() -> dict[str, Noul | Score]:
                 "as `ground_truth.entry_name`?"
             ),
         ),
-        "names_identity_hop": Noul(
-            instructions=(
-                "Does `student.rationale` describe the identity or role hop "
-                "named in `ground_truth.identity_hop`?"
-            ),
-        ),
+        "names_identity_hop": Noul(instructions=hop_question),
         "names_sink": Noul(
             instructions=(
                 "Does `student.rationale` identify the same sensitive data sink "

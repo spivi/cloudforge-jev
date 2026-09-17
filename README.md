@@ -18,11 +18,11 @@ One request, four atomic questions over the same state:
 | Question | Primitive | Meaning |
 |---|---|---|
 | `names_entry` | Noul | Same initial access as the labeled path? |
-| `names_identity_hop` | Noul | Same identity / role hop? |
+| `names_identity_hop` | Noul | Same hop that grants the access: the first identity after the entry, or the misconfigured resource when the path has none (a public bucket, a shared snapshot) |
 | `names_sink` | Noul | Same sensitive data sink? |
 | `completeness` | Score | Missed / partial / full chain |
 
-A semantic hit is all three Nouls at or above 0.7. A Noul between 0.4 and 0.6
+The three names come from node types, not positions: an owning account as the entry means public, unauthenticated access; an external account is named as such. A semantic hit is all three Nouls at or above 0.7. A Noul between 0.4 and 0.6
 flags instructor review. That composition is ordinary Python.
 
 ## Setup
