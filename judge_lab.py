@@ -80,23 +80,24 @@ def _ensure_lab(args: argparse.Namespace) -> Path:
         scenario = root / "examples" / "ci_cd_iam_chain.yaml"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(root)
+    out = args.out if args.out.is_absolute() else Path.cwd() / args.out
     subprocess.run(
         [
             sys.executable,
             "-m",
             "app.cli",
             "lab",
-            str(scenario),
+            str(scenario.resolve()),
             "--seed",
             str(args.seed),
             "--out",
-            str(args.out),
+            str(out),
         ],
         cwd=root,
         env=env,
         check=True,
     )
-    return args.out
+    return out
 
 
 def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
