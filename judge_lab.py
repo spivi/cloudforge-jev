@@ -107,7 +107,6 @@ def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
     truth = json.loads((instructor / "ground_truth_paths.json").read_text())
     findings = json.loads((instructor / "expected_findings.json").read_text())
     primary = truth["paths"][0]
-    names = {n["id"]: n["name"] for n in graph["nodes"]}
     hops = _path_hops(graph["nodes"], list(primary["nodes"]), findings["findings"])
     return {
         "student": {"rationale": rationale.strip()},
@@ -117,8 +116,6 @@ def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
             "hop_name": hops["hop"],
             "hop_kind": hops["hop_kind"],
             "sink_name": hops["sink"],
-            "hop_names": [names[nid] for nid in primary["nodes"] if nid in names],
-            "finding_families": sorted({f["family"] for f in findings["findings"]}),
         },
     }
 
