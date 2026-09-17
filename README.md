@@ -74,5 +74,8 @@ Both samples, run against the same `ci_cd_iam_chain` lab (GitHub Actions OIDC,
 The miss names a public bucket and no IAM chain. Jev did not split the
 difference; the numbers went to the rule the code already had.
 
+The numbers are from one run. A second run of the same text moves them by a few
+hundredths, and by more on borderline answers; that is what the review band is for.
+
 Without `TYPESAFE_API_KEY` the sidecar exits with an error and the lab is
 untouched.
