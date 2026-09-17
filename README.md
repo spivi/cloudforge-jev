@@ -8,8 +8,8 @@ Students also write a paragraph. That text is not a node-id list. This sidecar
 sits **outside** cloudforge and uses [TypeSafe Jev](https://docs.typesafe.ai)
 to judge whether the paragraph names the same entry, identity hop, and sink.
 
-cloudforge stays hermetic. No TypeSafe dependency lands in the OSS product.
-Code here owns the thresholds. Jev returns probabilities.
+cloudforge stays hermetic and no TypeSafe dependency lands in the OSS product;
+the code here owns the thresholds and Jev returns the probabilities.
 
 ## What Jev is doing
 
@@ -56,9 +56,22 @@ Wrong risk:
 `--lab` reuses a pack `cloudforge lab` already wrote. Omit it and the sidecar
 generates one.
 
-## Why this is the fit
+## What comes back
 
-- Exact grading stays in OSS (`cloudforge grade`).
-- The hard part is semantic: did the student describe the same chain in prose?
-- Jev is a typed decision, not a generated explanation.
-- Fail-soft: no key, no sidecar. The lab still works.
+Both samples, run against the same `ci_cd_iam_chain` lab (GitHub Actions OIDC,
+`iam:PassRole` to a runtime role, `customer-exports`):
+
+| Signal | `samples/match.txt` | `samples/miss.txt` |
+|---|---|---|
+| names entry | 0.94 | 0.05 |
+| names identity hop | 0.86 | 0.02 |
+| names sink | 0.82 | 0.06 |
+| completeness (0 to 2) | 1.59, full chain | 0.01, different risk |
+| semantic hit | yes | no |
+| instructor review | no | no |
+
+The miss names a public bucket and no IAM chain. Jev did not split the
+difference; the numbers went to the rule the code already had.
+
+Without `TYPESAFE_API_KEY` the sidecar exits with an error and the lab is
+untouched.
