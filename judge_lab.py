@@ -55,6 +55,11 @@ def _parse() -> argparse.Namespace:
         help="Existing cloudforge lab directory (student/ + instructor/).",
     )
     parser.add_argument(
+        "--generate",
+        action="store_true",
+        help="No --lab: write one with cloudforge instead of failing closed.",
+    )
+    parser.add_argument(
         "--scenario",
         type=Path,
         default=None,
@@ -71,9 +76,27 @@ def _parse() -> argparse.Namespace:
     return parser.parse_args()
 
 
+REQUIRED_INSTRUCTOR_FILES = (
+    "graph.json",
+    "ground_truth_paths.json",
+    "expected_findings.json",
+)
+
+
 def _ensure_lab(args: argparse.Namespace) -> Path:
     if args.lab is not None:
+        instructor = args.lab / "instructor"
+        for name in REQUIRED_INSTRUCTOR_FILES:
+            required = instructor / name
+            if not required.is_file():
+                console.print(f"[red]error:[/red] missing {required}")
+                raise SystemExit(2)
         return args.lab
+    if not args.generate:
+        console.print(
+            "[red]error:[/red] pass --lab <pack>, or --generate to write one with cloudforge"
+        )
+        raise SystemExit(2)
     root = args.cloudforge_root
     if not root or not (root / "app" / "cli.py").is_file():
         raise SystemExit("pass --cloudforge-root or set CLOUDFORGE_ROOT")

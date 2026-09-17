@@ -37,11 +37,14 @@ export CLOUDFORGE_ROOT=/path/to/forge-x-labs
 
 ## Run
 
-Matching writeup:
+`--lab` is required unless you pass `--generate`. The sidecar fails closed: no
+Jev call, no lab write, until you say which one you want.
+
+Matching writeup, against a pack `cloudforge lab` already wrote:
 
 ```bash
 .venv/bin/python judge_lab.py \
-  --cloudforge-root "$CLOUDFORGE_ROOT" \
+  --lab out/demo-lab \
   --rationale samples/match.txt
 ```
 
@@ -49,13 +52,21 @@ Wrong risk:
 
 ```bash
 .venv/bin/python judge_lab.py \
-  --cloudforge-root "$CLOUDFORGE_ROOT" \
   --lab out/demo-lab \
   --rationale samples/miss.txt
 ```
 
-`--lab` reuses a pack `cloudforge lab` already wrote. Omit it and the sidecar
-generates one.
+No pack yet:
+
+```bash
+.venv/bin/python judge_lab.py \
+  --generate \
+  --cloudforge-root "$CLOUDFORGE_ROOT" \
+  --rationale samples/match.txt
+```
+
+`--lab` reuses a pack `cloudforge lab` already wrote. `--generate` writes one
+with cloudforge first.
 
 ## What comes back
 
