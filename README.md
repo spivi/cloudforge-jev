@@ -31,6 +31,7 @@ flags instructor review. That composition is ordinary Python.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 export CLOUDFORGE_ROOT=/path/to/forge-x-labs
+.venv/bin/pip install -e "$CLOUDFORGE_ROOT"   # only needed when the sidecar generates the lab
 # TYPESAFE_API_KEY in .env
 ```
 

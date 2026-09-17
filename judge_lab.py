@@ -9,6 +9,7 @@ narrow questions. Code owns the hit threshold.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -82,6 +83,11 @@ def _ensure_lab(args: argparse.Namespace) -> Path:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(root)
     out = args.out if args.out.is_absolute() else Path.cwd() / args.out
+    if importlib.util.find_spec("typer") is None:
+        raise SystemExit(
+            "cloudforge is not installed in this interpreter; run "
+            f"`pip install -e {root}` or pass --lab to an existing pack"
+        )
     subprocess.run(
         [
             sys.executable,
