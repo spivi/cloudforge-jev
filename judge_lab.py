@@ -29,9 +29,9 @@ DEPTH_LABELS = (
     "Names a different risk, or none of the critical hops",
     "Names the sink or the entry but not the connecting hop",
     "Names the entry, the hop that grants the access, and what is reached",
-    "Also walks the intermediate hops between them, in order",
-    "Also names what makes each hop possible: the grant, binding, or policy behind it",
+    "Also walks the chain between them, in order, with what makes each hop possible",
 )
+DEPTH_SHORT_PATH_MAX = 2  # a labeled path of 3 nodes or fewer has no chain to walk
 console = Console()
 
 
@@ -47,7 +47,9 @@ def main() -> int:
     with TypeSafeClient(api_key=key, model=MODEL) as client:
         hop_kind = str(state["ground_truth"]["hop_kind"])  # type: ignore[index]
         response = client.system_one(state, _questions(hop_kind))
-    _print(_verdict(response))
+    chain = state["ground_truth"]["chain"]  # type: ignore[index]
+    max_level = DEPTH_SHORT_PATH_MAX if len(chain) <= 3 else len(DEPTH_LABELS) - 1
+    _print(_verdict(response, max_level))
     return 0
 
 
@@ -307,20 +309,22 @@ def _questions(hop_kind: str) -> dict[str, Noul | Score]:
     }
 
 
-def _verdict(response: object) -> dict[str, object]:
+def _verdict(response: object, max_level: int) -> dict[str, object]:
     nouls = response.nouls  # type: ignore[attr-defined]
     score = response.scores["depth"]  # type: ignore[attr-defined]
     entry = float(nouls["names_entry"].noul)
     hop = float(nouls["names_identity_hop"].noul)
     sink = float(nouls["names_sink"].noul)
-    idx = min(4, max(0, round(float(score.score))))
+    raw = float(score.score)
+    idx = max(0, min(round(raw), max_level))
     uncertain = any(UNCERTAIN_LOW < p < UNCERTAIN_HIGH for p in (entry, hop, sink))
     return {
         "names_entry": entry,
         "names_identity_hop": hop,
         "names_sink": sink,
-        "depth": float(score.score),
+        "depth_raw": raw,
         "depth_level": idx,
+        "depth_max": max_level,
         "depth_label": DEPTH_LABELS[idx],
         "semantic_hit": entry >= HIT and hop >= HIT and sink >= HIT,
         "needs_review": uncertain,
@@ -336,7 +340,7 @@ def _print(verdict: dict[str, object]) -> None:
     table.add_row("names sink", f"{verdict['names_sink']:.3f}")
     table.add_row(
         "depth",
-        f"{verdict['depth_level']} of 4 ({verdict['depth_label']})",
+        f"{verdict['depth_level']} of {verdict['depth_max']} ({verdict['depth_label']})",
     )
     table.add_row("semantic hit", "yes" if verdict["semantic_hit"] else "no")
     table.add_row("instructor review", "yes" if verdict["needs_review"] else "no")

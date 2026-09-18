@@ -205,7 +205,7 @@ class _FakeResponse:
 
 
 def test_verdict_match_sample():
-    verdict = _verdict(_FakeResponse(0.94, 0.86, 0.82, 1.59))
+    verdict = _verdict(_FakeResponse(0.94, 0.86, 0.82, 1.59), max_level=3)
     assert verdict["semantic_hit"] is True
     assert verdict["needs_review"] is False
     assert verdict["depth_label"] == (
@@ -214,27 +214,27 @@ def test_verdict_match_sample():
 
 
 def test_verdict_miss_sample():
-    verdict = _verdict(_FakeResponse(0.05, 0.02, 0.06, 0.01))
+    verdict = _verdict(_FakeResponse(0.05, 0.02, 0.06, 0.01), max_level=3)
     assert verdict["semantic_hit"] is False
     assert verdict["needs_review"] is False
     assert verdict["depth_label"] == "Names a different risk, or none of the critical hops"
 
 
 def test_verdict_borderline_case_flags_review():
-    verdict = _verdict(_FakeResponse(0.9, 0.5, 0.9, 1.0))
+    verdict = _verdict(_FakeResponse(0.9, 0.5, 0.9, 1.0), max_level=3)
     assert verdict["semantic_hit"] is False
     assert verdict["needs_review"] is True
 
 
 def test_verdict_exact_threshold_is_a_hit():
-    verdict = _verdict(_FakeResponse(0.7, 0.7, 0.7, 2.0))
+    verdict = _verdict(_FakeResponse(0.7, 0.7, 0.7, 2.0), max_level=3)
     assert verdict["semantic_hit"] is True
     assert verdict["needs_review"] is False
 
 
 @pytest.mark.parametrize("boundary", [0.4, 0.6])
 def test_verdict_review_band_is_strict_inequality(boundary: float):
-    verdict = _verdict(_FakeResponse(0.9, boundary, 0.9, 1.0))
+    verdict = _verdict(_FakeResponse(0.9, boundary, 0.9, 1.0), max_level=3)
     assert verdict["needs_review"] is False
 
 
@@ -248,8 +248,8 @@ def test_verdict_review_band_is_strict_inequality(boundary: float):
         (2.49, 2),
         (2.5, 2),
         (3.49, 3),
-        (3.5, 4),
-        (4.49, 4),
+        (3.5, 3),
+        (4.49, 3),
     ],
 )
 def test_verdict_completeness_rounding(score: float, label_index: int):
@@ -257,18 +257,29 @@ def test_verdict_completeness_rounding(score: float, label_index: int):
         "Names a different risk, or none of the critical hops",
         "Names the sink or the entry but not the connecting hop",
         "Names the entry, the hop that grants the access, and what is reached",
-        "Also walks the intermediate hops between them, in order",
-        "Also names what makes each hop possible: the grant, binding, or policy behind it",
+        "Also walks the chain between them, in order, with what makes each hop possible",
     )
-    verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, score))
+    verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, score), max_level=3)
     assert verdict["depth_label"] == labels[label_index]
     assert verdict["depth_level"] == label_index
 
 
 def test_verdict_completeness_clamps_above_two():
-    verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, 6.0))
+    verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, 6.0), max_level=3)
     assert verdict["depth_label"] == (
-        "Also names what makes each hop possible: the grant, binding, or policy behind it"
+        "Also walks the chain between them, in order, with what makes each hop possible"
     )
-    assert verdict["depth_level"] == 4
-    assert verdict["depth"] == 6.0
+    assert verdict["depth_level"] == 3
+    assert verdict["depth_raw"] == 6.0
+
+
+def test_verdict_short_path_caps_at_depth_two():
+    """A labeled path of three nodes or fewer has no chain to walk beyond the hop
+    already required at depth 2, so max_level caps it there even on a high raw score."""
+    verdict = _verdict(_FakeResponse(0.98, 0.95, 0.96, 3.5), max_level=2)
+    assert verdict["depth_level"] == 2
+    assert verdict["depth_max"] == 2
+    assert verdict["depth_raw"] == 3.5
+    assert verdict["depth_label"] == (
+        "Names the entry, the hop that grants the access, and what is reached"
+    )

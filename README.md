@@ -20,7 +20,7 @@ One request, four atomic questions over the same state:
 | `names_entry` | Noul | Same initial access as the labeled path? |
 | `names_identity_hop` | Noul | Same hop that grants the access: the first identity after the entry, or the misconfigured resource when the path has none (a public bucket, a shared snapshot) |
 | `names_sink` | Noul | Names what the attacker reaches, per `ground_truth.sink_kind` (data, secret, key, role, image, queue, snapshot, database, vault) |
-| `depth` | Score | How far the writeup walks the chain, five levels |
+| `depth` | Score | How far the writeup walks the chain, four levels |
 
 The three names come from node types, not positions: an owning account as the entry means public, unauthenticated access; an external account is named as such. On a two-node
 path (an external account into the trusted role, a developer role into the admin role),
@@ -36,8 +36,12 @@ and 0.6 flags instructor review. That composition is ordinary Python.
 | 0 | Names a different risk, or none of the critical hops |
 | 1 | Names the sink or the entry but not the connecting hop |
 | 2 | Names the entry, the hop that grants the access, and what is reached |
-| 3 | Also walks the intermediate hops between them, in order |
-| 4 | Also names what makes each hop possible: the grant, binding, or policy behind it |
+| 3 | Also walks the chain between them, in order, with what makes each hop possible |
+
+The top of the ladder is capped by the labeled path itself: a path of three nodes or
+fewer has no chain left to walk beyond the hop already required at depth 2, so it caps
+at depth 2 of 2; a longer path caps at depth 3 of 3. The printed row always reads
+"depth N of M" for that lab's own M.
 
 ## Setup
 
@@ -92,7 +96,7 @@ Both samples, run against the same `ci_cd_iam_chain` lab (GitHub Actions OIDC,
 | names entry | 0.97 | 0.02 |
 | names identity hop | 0.84 | 0.02 |
 | names sink | 0.65 | 0.03 |
-| depth (0 to 4) | 2, entry, hop, and sink | 0, different risk |
+| depth (0 to 3, this lab's chain is 8 nodes) | 2, entry, hop, and sink | 0, different risk |
 | semantic hit | no (sink sat at 0.65, under 0.7) | no |
 | instructor review | no | no |
 
