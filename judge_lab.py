@@ -44,10 +44,11 @@ def main() -> int:
         return 1
     lab_dir = _ensure_lab(args)
     state = _state(lab_dir, args.rationale.read_text(encoding="utf-8"))
+    chain = state["ground_truth"].pop("chain")  # type: ignore[union-attr]
     with TypeSafeClient(api_key=key, model=MODEL) as client:
         hop_kind = str(state["ground_truth"]["hop_kind"])  # type: ignore[index]
-        response = client.system_one(state, _questions(hop_kind))
-    chain = state["ground_truth"]["chain"]  # type: ignore[index]
+        sink_kind = str(state["ground_truth"]["sink_kind"])  # type: ignore[index]
+        response = client.system_one(state, _questions(hop_kind, sink_kind))
     max_level = DEPTH_SHORT_PATH_MAX if len(chain) <= 3 else len(DEPTH_LABELS) - 1
     _print(_verdict(response, max_level))
     return 0
@@ -276,7 +277,7 @@ def _finding_ground_truth(
     return ""
 
 
-def _questions(hop_kind: str) -> dict[str, Noul | Score]:
+def _questions(hop_kind: str, sink_kind: str = "data") -> dict[str, Noul | Score]:
     hop_question = (
         "Does `student.rationale` describe the identity or role hop named in `ground_truth.hop_name`?"
         if hop_kind == "identity"
@@ -284,6 +285,13 @@ def _questions(hop_kind: str) -> dict[str, Noul | Score]:
             "Does `student.rationale` describe the misconfiguration in "
             "`ground_truth.hop_name` as what opens the access?"
         )
+    )
+    # Measured: the "what the attacker reaches" wording costs a tenth on data endings and
+    # works on the typed ones, so each kind keeps the wording that scores its correct answers.
+    sink_question = (
+        "Does `student.rationale` identify the same sensitive data sink as `ground_truth.sink_name`?"
+        if sink_kind == "data"
+        else "Does `student.rationale` identify what the attacker reaches, named in `ground_truth.sink_name`?"
     )
     return {
         "names_entry": Noul(
@@ -293,16 +301,11 @@ def _questions(hop_kind: str) -> dict[str, Noul | Score]:
             ),
         ),
         "names_identity_hop": Noul(instructions=hop_question),
-        "names_sink": Noul(
-            instructions=(
-                "Does `student.rationale` identify what the attacker reaches, "
-                "named in `ground_truth.sink_name`?"
-            ),
-        ),
+        "names_sink": Noul(instructions=sink_question),
         "depth": Score(
             instructions=(
-                "How far does `student.rationale` walk the chain in `ground_truth.chain`, "
-                "relative to `ground_truth.explanation`?"
+                "How far does `student.rationale` walk the chain described in "
+                "`ground_truth.explanation`?"
             ),
             criteria=list(DEPTH_LABELS),
         ),

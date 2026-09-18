@@ -96,13 +96,28 @@ Twelve hard 1.4.0 labs across six families, answers written to land on each rung
 completeness Score. Raw scores landed within a few hundredths of 0, 1, 2 and 3 for "a different
 risk", "only the entry or the sink", "the triple", and "the triple plus the chain". A fifth rung,
 naming the grant behind every hop, floated between 3.35 and 3.89 and rounded either way, so the
-ladder has four rungs and a three-node path is capped at two. The ladder holds on 10 of 12 labs;
-the two exceptions are three-node labs where the first answer already reaches the cap.
+ladder has four rungs and a three-node path is capped at two.
 
-The deepest answers cost the pass: spelling out every grant dropped the "what is reached"
-probability to 0.44 and 0.57 on two labs, and five of twelve fully correct deep answers became
-misses. Atomic questions over a paragraph that keeps growing are not free; the demo's answer box
-asks for one clear sentence per hop before the elaboration.
+The first run of that measurement also had the full chain of path names in the Jev state, added so
+the Score could read it, and it looked as if the deepest answers cost the pass: five of twelve
+correct deep answers missed on the "what is reached" Noul. Isolated afterwards on one paragraph:
+0.54 with the chain in the state and the reworded sink question, 0.82 without the chain, 0.95
+without the chain and with the original "sensitive data sink" wording. The chain came out of the
+state (the explanation already names every hop) and the sink wording follows the ending (the
+original wording for data, "what the attacker reaches" for typed endings). Re-run on four of the
+twelve labs without the chain:
+
+| lab (hard, seed 9001) | a: triple | b: + every hop | c: + the grant behind each hop |
+| --- | --- | --- | --- |
+| ci_cd_iam_chain | 0.96 / 0.93 / 0.98, depth 2, hit | 0.97 / 0.89 / 0.95, depth 2, hit | 0.98 / 0.94 / 0.76, depth 3, hit |
+| k8s_pod_irsa_exfil | 0.97 / 0.76 / 0.97, depth 2, hit | 0.97 / 0.63 / 0.98, depth 2, miss on the hop | 0.97 / 0.89 / 0.88, depth 3, hit |
+| azure_imds_keyvault_harvest | 0.95 / 0.65 / 0.97, depth 2, miss on the hop | 0.97 / 0.86 / 0.98, depth 2, hit | 0.96 / 0.90 / 0.94, depth 3, hit |
+| gcp_workload_identity_federation | 0.95 / 0.83 / 0.93, depth 2, hit | 0.96 / 0.83 / 0.88, depth 2, hit | 0.97 / 0.94 / 0.84, depth 3, hit |
+
+The deepest answers pass, four of four, with sinks at 0.76 to 0.94 where the first run had 0.44
+to 0.68. The two misses in the table are hop Nouls at 0.63 and 0.65, the threshold variance
+described in section 2. The ladder now reads: 2 for the triple or for the chain without its
+mechanisms, 3 for the chain with the grant behind each hop.
 
 ## 7. Typed endings
 

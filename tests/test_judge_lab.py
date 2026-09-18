@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import judge_lab
 from judge_lab import _path_hops, _state, _verdict
 
 # ---------------------------------------------------------------------------
@@ -117,9 +118,7 @@ def test_path_hops_hop_equal_target_collapses_to_resource_question():
             "ground_truth": "An external dummy account is trusted into a role that can read data.",
         }
     ]
-    hops = _path_hops(
-        nodes, ["n1", "n2"], findings, sink_kind="role", target="n2", hop="n2"
-    )
+    hops = _path_hops(nodes, ["n1", "n2"], findings, sink_kind="role", target="n2", hop="n2")
     assert hops["hop_kind"] == "resource"
     assert hops["hop"] == (
         "role-shared: An external dummy account is trusted into a role that can read data."
@@ -138,9 +137,7 @@ def test_path_hops_prefers_key_hop_and_target_over_type_fallback():
         {"id": "n3", "type": "SqsQueue", "name": "orders-queue"},
         {"id": "n4", "type": "S3Bucket", "name": "customer-exports"},
     ]
-    hops = _path_hops(
-        nodes, ["n1", "n2", "n3", "n4"], [], sink_kind="data", target="n4", hop="n3"
-    )
+    hops = _path_hops(nodes, ["n1", "n2", "n3", "n4"], [], sink_kind="data", target="n4", hop="n3")
     assert hops["hop"] == "orders-queue"
     assert hops["hop_kind"] == "resource"
     assert hops["sink"] == "customer-exports"
@@ -283,3 +280,38 @@ def test_verdict_short_path_caps_at_depth_two():
     assert verdict["depth_label"] == (
         "Names the entry, the hop that grants the access, and what is reached"
     )
+
+
+def test_sink_question_wording_follows_the_sink_kind() -> None:
+    data = judge_lab._questions("identity", "data")["names_sink"].instructions
+    role = judge_lab._questions("identity", "role")["names_sink"].instructions
+    assert "sensitive data sink" in data
+    assert "what the attacker reaches" in role
+
+
+def test_chain_is_kept_for_the_cap_but_not_sent_to_jev(monkeypatch, lab_pack) -> None:  # type: ignore[no-untyped-def]
+    sent: dict[str, object] = {}
+
+    class _Client:
+        def __init__(self, **_: object) -> None: ...
+        def __enter__(self) -> _Client:
+            return self
+
+        def __exit__(self, *_: object) -> None: ...
+        def system_one(self, state: dict[str, object], _questions: object) -> object:
+            sent.update(state)
+            raise RuntimeError("stop here")
+
+    monkeypatch.setattr(judge_lab, "TypeSafeClient", _Client)
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(
+        judge_lab.sys,
+        "argv",
+        ["judge_lab.py", "--lab", str(lab_pack), "--rationale", str(lab_pack / "r.txt")],
+    )
+    (lab_pack / "r.txt").write_text("a paragraph")
+    try:
+        judge_lab.main()
+    except RuntimeError:
+        pass
+    assert "chain" not in sent["ground_truth"]  # type: ignore[operator]
