@@ -25,6 +25,13 @@ HIT = 0.7
 UNCERTAIN_LOW = 0.4
 UNCERTAIN_HIGH = 0.6
 MODEL = "jev-latest"
+DEPTH_LABELS = (
+    "Names a different risk, or none of the critical hops",
+    "Names the sink or the entry but not the connecting hop",
+    "Names the entry, the hop that grants the access, and what is reached",
+    "Also walks the intermediate hops between them, in order",
+    "Also names what makes each hop possible: the grant, binding, or policy behind it",
+)
 console = Console()
 
 
@@ -136,7 +143,14 @@ def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
     truth = json.loads((instructor / "ground_truth_paths.json").read_text())
     findings = json.loads((instructor / "expected_findings.json").read_text())
     primary = truth["paths"][0]
-    hops = _path_hops(graph["nodes"], list(primary["nodes"]), findings["findings"])
+    hops = _path_hops(
+        graph["nodes"],
+        list(primary["nodes"]),
+        findings["findings"],
+        sink_kind=primary.get("sink_kind"),
+        target=primary.get("target"),
+        hop=primary.get("hop"),
+    )
     return {
         "student": {"rationale": rationale.strip()},
         "ground_truth": {
@@ -145,6 +159,8 @@ def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
             "hop_name": hops["hop"],
             "hop_kind": hops["hop_kind"],
             "sink_name": hops["sink"],
+            "sink_kind": hops["sink_kind"],
+            "chain": hops["chain"],
         },
     }
 
@@ -164,42 +180,98 @@ IDENTITY_TYPES = frozenset(
 
 
 def _path_hops(
-    nodes: list[dict[str, object]], path_ids: list[str], findings: list[dict[str, object]] | None = None
-) -> dict[str, str]:
-    """The three things a writeup must name, chosen by node type rather than position.
+    nodes: list[dict[str, object]],
+    path_ids: list[str],
+    findings: list[dict[str, object]] | None = None,
+    sink_kind: str | None = None,
+    target: str | None = None,
+    hop: str | None = None,
+) -> dict[str, object]:
+    """The things a writeup must name, chosen by node type rather than position.
 
     entry: the first node; an owning account means public, unauthenticated access, an
-    external account is named as such. hop: the first identity after the entry, or, when
-    the path has none (public bucket, shared snapshot, wildcard queue), the misconfigured
-    resource itself, described by its critical finding when the instructor pack has one
-    ("SQS queue policy allows wildcard principal ..."). sink: the last node.
+    external account is named as such. hop: the grade key's ``hop`` when given, else the
+    first identity after the entry, or, when the path has none (public bucket, shared
+    snapshot, wildcard queue), the misconfigured resource itself, described by its
+    critical finding when the instructor pack has one ("SQS queue policy allows wildcard
+    principal ..."). sink/target: the grade key's ``target`` when given, else the last
+    node. When the hop lands on the same node as the target (a two-node path: an external
+    account into the trusted role, a developer role into the admin role), asking about the
+    hop would repeat the sink question, so it collapses into the resource question instead:
+    the misconfiguration that opens the access. sink_kind labels the target's kind (data,
+    secret, key, role, image, queue, snapshot, database, vault) and defaults to "data" for
+    a pack written before the field existed. chain is every path node's name, in order, for
+    the depth ladder's "walks the intermediate hops in order" level.
     """
     by_id = {str(n["id"]): n for n in nodes}
-    chain = [by_id[i] for i in path_ids if i in by_id]
-    if not chain:
-        return {"entry": "", "hop": "", "hop_kind": "identity", "sink": ""}
-    entry, sink = chain[0], chain[-1]
+    chain_ids = [i for i in path_ids if i in by_id]
+    if not chain_ids:
+        return {
+            "entry": "",
+            "hop": "",
+            "hop_kind": "identity",
+            "sink": "",
+            "sink_kind": sink_kind or "data",
+            "chain": [],
+        }
+    entry = by_id[chain_ids[0]]
+    sink_id = target if target and target in by_id else chain_ids[-1]
+    sink = by_id[sink_id]
     entry_name = str(entry["name"])
     if entry["type"] == "Account":
         if entry_name.startswith("prod-account"):
             entry_name = "anyone on the internet, unauthenticated"
         else:
             entry_name = f"the external account {entry_name}"
-    middle = chain[1:-1]
-    identity = next((n for n in middle if n["type"] in IDENTITY_TYPES), None)
-    if identity is not None:
-        hop, kind = str(identity["name"]), "identity"
-    elif middle:
-        resource = middle[0]
-        hop, kind = str(resource["name"]), "resource"
-        for finding in findings or []:
-            on_path = any(r in path_ids for r in finding.get("resource_ids", []))
-            if on_path and finding.get("severity") in ("critical", "high") and finding.get("ground_truth"):
-                hop = f"{resource['name']}: {finding['ground_truth']}"
-                break
+    hop_id: str | None = None
+    if len(chain_ids) >= 2:
+        hop_id = hop if hop and hop in by_id else None
+        if hop_id is None:
+            middle_ids = chain_ids[1:-1]
+            identity_id = next(
+                (i for i in middle_ids if by_id[i]["type"] in IDENTITY_TYPES), None
+            )
+            if identity_id is not None:
+                hop_id = identity_id
+            elif middle_ids:
+                hop_id = middle_ids[0]
+            else:
+                hop_id = sink_id  # two-node path: the hop collapses onto the target
+    if hop_id is None:
+        hop_name, hop_kind = "", "identity"
+    elif hop_id == sink_id:
+        hop_kind = "resource"
+        hop_name = str(sink["name"])
+        finding_text = _finding_ground_truth(chain_ids, findings)
+        if finding_text:
+            hop_name = f"{hop_name}: {finding_text}"
+    elif by_id[hop_id]["type"] in IDENTITY_TYPES:
+        hop_name, hop_kind = str(by_id[hop_id]["name"]), "identity"
     else:
-        hop, kind = "", "identity"
-    return {"entry": entry_name, "hop": hop, "hop_kind": kind, "sink": str(sink["name"])}
+        hop_kind = "resource"
+        hop_name = str(by_id[hop_id]["name"])
+        finding_text = _finding_ground_truth(chain_ids, findings)
+        if finding_text:
+            hop_name = f"{hop_name}: {finding_text}"
+    return {
+        "entry": entry_name,
+        "hop": hop_name,
+        "hop_kind": hop_kind,
+        "sink": str(sink["name"]),
+        "sink_kind": sink_kind or "data",
+        "chain": [str(by_id[i]["name"]) for i in chain_ids],
+    }
+
+
+def _finding_ground_truth(
+    path_ids: list[str], findings: list[dict[str, object]] | None
+) -> str:
+    """The first critical/high finding on the path, in the instructor's own words."""
+    for finding in findings or []:
+        on_path = any(r in path_ids for r in finding.get("resource_ids", []))
+        if on_path and finding.get("severity") in ("critical", "high") and finding.get("ground_truth"):
+            return str(finding["ground_truth"])
+    return ""
 
 
 def _questions(hop_kind: str) -> dict[str, Noul | Score]:
@@ -221,43 +293,35 @@ def _questions(hop_kind: str) -> dict[str, Noul | Score]:
         "names_identity_hop": Noul(instructions=hop_question),
         "names_sink": Noul(
             instructions=(
-                "Does `student.rationale` identify the same sensitive data sink "
-                "as `ground_truth.sink_name`?"
+                "Does `student.rationale` identify what the attacker reaches, "
+                "named in `ground_truth.sink_name`?"
             ),
         ),
-        "completeness": Score(
+        "depth": Score(
             instructions=(
-                "How complete is `student.rationale` relative to "
-                "`ground_truth.explanation`?"
+                "How far does `student.rationale` walk the chain in `ground_truth.chain`, "
+                "relative to `ground_truth.explanation`?"
             ),
-            criteria=[
-                "Names a different risk, or none of the critical hops",
-                "Names the sink or the entry but not the connecting hop",
-                "Names the entry, the identity hop, and the sink",
-            ],
+            criteria=list(DEPTH_LABELS),
         ),
     }
 
 
 def _verdict(response: object) -> dict[str, object]:
     nouls = response.nouls  # type: ignore[attr-defined]
-    score = response.scores["completeness"]  # type: ignore[attr-defined]
+    score = response.scores["depth"]  # type: ignore[attr-defined]
     entry = float(nouls["names_entry"].noul)
     hop = float(nouls["names_identity_hop"].noul)
     sink = float(nouls["names_sink"].noul)
-    labels = (
-        "Names a different risk, or none of the critical hops",
-        "Names the sink or the entry but not the connecting hop",
-        "Names the entry, the identity hop, and the sink",
-    )
-    idx = min(2, max(0, round(float(score.score))))
+    idx = min(4, max(0, round(float(score.score))))
     uncertain = any(UNCERTAIN_LOW < p < UNCERTAIN_HIGH for p in (entry, hop, sink))
     return {
         "names_entry": entry,
         "names_identity_hop": hop,
         "names_sink": sink,
-        "completeness": float(score.score),
-        "completeness_label": labels[idx],
+        "depth": float(score.score),
+        "depth_level": idx,
+        "depth_label": DEPTH_LABELS[idx],
         "semantic_hit": entry >= HIT and hop >= HIT and sink >= HIT,
         "needs_review": uncertain,
     }
@@ -271,8 +335,8 @@ def _print(verdict: dict[str, object]) -> None:
     table.add_row("names identity hop", f"{verdict['names_identity_hop']:.3f}")
     table.add_row("names sink", f"{verdict['names_sink']:.3f}")
     table.add_row(
-        "completeness",
-        f"{verdict['completeness']:.3f} ({verdict['completeness_label']})",
+        "depth",
+        f"{verdict['depth_level']} of 4 ({verdict['depth_label']})",
     )
     table.add_row("semantic hit", "yes" if verdict["semantic_hit"] else "no")
     table.add_row("instructor review", "yes" if verdict["needs_review"] else "no")

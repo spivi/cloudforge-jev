@@ -25,6 +25,8 @@ def test_path_hops_identity_chain():
         "hop": "DeployRole",
         "hop_kind": "identity",
         "sink": "customer-exports",
+        "sink_kind": "data",
+        "chain": ["public-endpoint", "DeployRole", "customer-exports"],
     }
 
 
@@ -73,6 +75,8 @@ def test_path_hops_single_node():
         "hop": "",
         "hop_kind": "identity",
         "sink": "DeployRole",
+        "sink_kind": "data",
+        "chain": ["DeployRole"],
     }
 
 
@@ -98,6 +102,51 @@ def test_path_hops_findings_none():
     assert hops["hop_kind"] == "resource"
 
 
+def test_path_hops_hop_equal_target_collapses_to_resource_question():
+    """A two-node path (external account into the trusted role, developer role into the
+    admin role): the hop and the target are the same node, so the hop question is not
+    the identity again, it is the misconfiguration that opens the access."""
+    nodes = [
+        {"id": "n1", "type": "Account", "name": "acct-external"},
+        {"id": "n2", "type": "IAMRole", "name": "role-shared"},
+    ]
+    findings = [
+        {
+            "severity": "critical",
+            "resource_ids": ["n1", "n2"],
+            "ground_truth": "An external dummy account is trusted into a role that can read data.",
+        }
+    ]
+    hops = _path_hops(
+        nodes, ["n1", "n2"], findings, sink_kind="role", target="n2", hop="n2"
+    )
+    assert hops["hop_kind"] == "resource"
+    assert hops["hop"] == (
+        "role-shared: An external dummy account is trusted into a role that can read data."
+    )
+    assert hops["sink"] == "role-shared"
+    assert hops["sink_kind"] == "role"
+    assert hops["chain"] == ["acct-external", "role-shared"]
+
+
+def test_path_hops_prefers_key_hop_and_target_over_type_fallback():
+    """A grade key's ``hop``/``target`` win over the type-aware derivation, even when a
+    type-aware reader would have picked a different middle node."""
+    nodes = [
+        {"id": "n1", "type": "PublicEndpoint", "name": "public-endpoint"},
+        {"id": "n2", "type": "IAMRole", "name": "DecoyRole"},
+        {"id": "n3", "type": "SqsQueue", "name": "orders-queue"},
+        {"id": "n4", "type": "S3Bucket", "name": "customer-exports"},
+    ]
+    hops = _path_hops(
+        nodes, ["n1", "n2", "n3", "n4"], [], sink_kind="data", target="n4", hop="n3"
+    )
+    assert hops["hop"] == "orders-queue"
+    assert hops["hop_kind"] == "resource"
+    assert hops["sink"] == "customer-exports"
+    assert hops["sink_kind"] == "data"
+
+
 # ---------------------------------------------------------------------------
 # _state
 # ---------------------------------------------------------------------------
@@ -110,6 +159,8 @@ def test_state_ground_truth_has_only_the_expected_keys(lab_pack: Path):
         "hop_name",
         "hop_kind",
         "sink_name",
+        "sink_kind",
+        "chain",
         "explanation",
     }
 
@@ -122,6 +173,8 @@ def test_state_rationale_is_stripped(lab_pack: Path):
         "hop_name",
         "hop_kind",
         "sink_name",
+        "sink_kind",
+        "chain",
         "explanation",
     }
 
@@ -148,21 +201,23 @@ class _FakeResponse:
             "names_identity_hop": _FakeNoul(hop),
             "names_sink": _FakeNoul(sink),
         }
-        self.scores = {"completeness": _FakeScore(completeness)}
+        self.scores = {"depth": _FakeScore(completeness)}
 
 
 def test_verdict_match_sample():
     verdict = _verdict(_FakeResponse(0.94, 0.86, 0.82, 1.59))
     assert verdict["semantic_hit"] is True
     assert verdict["needs_review"] is False
-    assert verdict["completeness_label"] == "Names the entry, the identity hop, and the sink"
+    assert verdict["depth_label"] == (
+        "Names the entry, the hop that grants the access, and what is reached"
+    )
 
 
 def test_verdict_miss_sample():
     verdict = _verdict(_FakeResponse(0.05, 0.02, 0.06, 0.01))
     assert verdict["semantic_hit"] is False
     assert verdict["needs_review"] is False
-    assert verdict["completeness_label"] == "Names a different risk, or none of the critical hops"
+    assert verdict["depth_label"] == "Names a different risk, or none of the critical hops"
 
 
 def test_verdict_borderline_case_flags_review():
@@ -190,19 +245,30 @@ def test_verdict_review_band_is_strict_inequality(boundary: float):
         (0.5, 0),
         (1.49, 1),
         (1.5, 2),
+        (2.49, 2),
+        (2.5, 2),
+        (3.49, 3),
+        (3.5, 4),
+        (4.49, 4),
     ],
 )
 def test_verdict_completeness_rounding(score: float, label_index: int):
     labels = (
         "Names a different risk, or none of the critical hops",
         "Names the sink or the entry but not the connecting hop",
-        "Names the entry, the identity hop, and the sink",
+        "Names the entry, the hop that grants the access, and what is reached",
+        "Also walks the intermediate hops between them, in order",
+        "Also names what makes each hop possible: the grant, binding, or policy behind it",
     )
     verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, score))
-    assert verdict["completeness_label"] == labels[label_index]
+    assert verdict["depth_label"] == labels[label_index]
+    assert verdict["depth_level"] == label_index
 
 
 def test_verdict_completeness_clamps_above_two():
-    verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, 3.0))
-    assert verdict["completeness_label"] == "Names the entry, the identity hop, and the sink"
-    assert verdict["completeness"] == 3.0
+    verdict = _verdict(_FakeResponse(0.1, 0.1, 0.1, 6.0))
+    assert verdict["depth_label"] == (
+        "Also names what makes each hop possible: the grant, binding, or policy behind it"
+    )
+    assert verdict["depth_level"] == 4
+    assert verdict["depth"] == 6.0

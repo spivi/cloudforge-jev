@@ -19,11 +19,25 @@ One request, four atomic questions over the same state:
 |---|---|---|
 | `names_entry` | Noul | Same initial access as the labeled path? |
 | `names_identity_hop` | Noul | Same hop that grants the access: the first identity after the entry, or the misconfigured resource when the path has none (a public bucket, a shared snapshot) |
-| `names_sink` | Noul | Same sensitive data sink? |
-| `completeness` | Score | Missed / partial / full chain |
+| `names_sink` | Noul | Names what the attacker reaches, per `ground_truth.sink_kind` (data, secret, key, role, image, queue, snapshot, database, vault) |
+| `depth` | Score | How far the writeup walks the chain, five levels |
 
-The three names come from node types, not positions: an owning account as the entry means public, unauthenticated access; an external account is named as such. A semantic hit is all three Nouls at or above 0.7. A Noul between 0.4 and 0.6
-flags instructor review. That composition is ordinary Python.
+The three names come from node types, not positions: an owning account as the entry means public, unauthenticated access; an external account is named as such. On a two-node
+path (an external account into the trusted role, a developer role into the admin role),
+the hop and the sink are the same node; asking about the hop would repeat the sink
+question, so it collapses into the resource question instead: the misconfiguration that
+opens the access. A semantic hit is all three Nouls at or above 0.7. A Noul between 0.4
+and 0.6 flags instructor review. That composition is ordinary Python.
+
+`depth` is a ladder, not a single completeness score:
+
+| Depth | What the writeup does |
+| --- | --- |
+| 0 | Names a different risk, or none of the critical hops |
+| 1 | Names the sink or the entry but not the connecting hop |
+| 2 | Names the entry, the hop that grants the access, and what is reached |
+| 3 | Also walks the intermediate hops between them, in order |
+| 4 | Also names what makes each hop possible: the grant, binding, or policy behind it |
 
 ## Setup
 
@@ -75,11 +89,11 @@ Both samples, run against the same `ci_cd_iam_chain` lab (GitHub Actions OIDC,
 
 | Signal | `samples/match.txt` | `samples/miss.txt` |
 |---|---|---|
-| names entry | 0.94 | 0.05 |
-| names identity hop | 0.86 | 0.02 |
-| names sink | 0.82 | 0.06 |
-| completeness (0 to 2) | 1.59, full chain | 0.01, different risk |
-| semantic hit | yes | no |
+| names entry | 0.97 | 0.02 |
+| names identity hop | 0.84 | 0.02 |
+| names sink | 0.65 | 0.03 |
+| depth (0 to 4) | 2, entry, hop, and sink | 0, different risk |
+| semantic hit | no (sink sat at 0.65, under 0.7) | no |
 | instructor review | no | no |
 
 The miss names a public bucket and no IAM chain. Jev did not split the
