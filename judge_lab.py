@@ -48,7 +48,8 @@ def main() -> int:
     with TypeSafeClient(api_key=key, model=MODEL) as client:
         hop_kind = str(state["ground_truth"]["hop_kind"])  # type: ignore[index]
         sink_kind = str(state["ground_truth"]["sink_kind"])  # type: ignore[index]
-        response = client.system_one(state, _questions(hop_kind, sink_kind))
+        entry_kind = str(state["ground_truth"]["entry_kind"])  # type: ignore[index]
+        response = client.system_one(state, _questions(hop_kind, sink_kind, entry_kind))
     max_level = DEPTH_SHORT_PATH_MAX if len(chain) <= 3 else len(DEPTH_LABELS) - 1
     _print(_verdict(response, max_level))
     return 0
@@ -159,6 +160,7 @@ def _state(lab_dir: Path, rationale: str) -> dict[str, object]:
         "ground_truth": {
             "explanation": primary["explanation"],
             "entry_name": hops["entry"],
+            "entry_kind": hops["entry_kind"],
             "hop_name": hops["hop"],
             "hop_kind": hops["hop_kind"],
             "sink_name": hops["sink"],
@@ -211,6 +213,7 @@ def _path_hops(
     if not chain_ids:
         return {
             "entry": "",
+            "entry_kind": "identity",
             "hop": "",
             "hop_kind": "identity",
             "sink": "",
@@ -220,12 +223,12 @@ def _path_hops(
     entry = by_id[chain_ids[0]]
     sink_id = target if target and target in by_id else chain_ids[-1]
     sink = by_id[sink_id]
-    entry_name = str(entry["name"])
+    entry_name, entry_kind = str(entry["name"]), "identity"
     if entry["type"] == "Account":
         if entry_name.startswith("prod-account"):
-            entry_name = "anyone on the internet, unauthenticated"
+            entry_name, entry_kind = "anyone on the internet, unauthenticated", "public"
         else:
-            entry_name = f"the external account {entry_name}"
+            entry_name, entry_kind = f"the external account {entry_name}", "external"
     hop_id: str | None = None
     if len(chain_ids) >= 2:
         hop_id = hop if hop and hop in by_id else None
@@ -258,6 +261,7 @@ def _path_hops(
             hop_name = f"{hop_name}: {finding_text}"
     return {
         "entry": entry_name,
+        "entry_kind": entry_kind,
         "hop": hop_name,
         "hop_kind": hop_kind,
         "sink": str(sink["name"]),
@@ -277,7 +281,30 @@ def _finding_ground_truth(
     return ""
 
 
-def _questions(hop_kind: str, sink_kind: str = "data") -> dict[str, Noul | Score]:
+# The entry is a node name for an identity and a phrase for a public or an external-account
+# entry. Measured on the seed-17 packs: the one wording for all scored a correct answer on the
+# external-account entry at 0.63; asking about the phrase as a phrase scored it 0.88 and moved
+# the other phrase entries by a few hundredths either way.
+ENTRY_QUESTIONS = {
+    "identity": (
+        "Does `student.rationale` identify the same initial access as `ground_truth.entry_name`?"
+    ),
+    "public": (
+        "Does `student.rationale` say the attack starts from outside, with no credentials, "
+        "as `ground_truth.entry_name` describes? Public, anonymous, unauthenticated or "
+        "anyone on the internet all count."
+    ),
+    "external": (
+        "Does `student.rationale` say the attack starts from another account, the one "
+        "`ground_truth.entry_name` names? A foreign, partner, third-party or cross-account "
+        "principal counts."
+    ),
+}
+
+
+def _questions(
+    hop_kind: str, sink_kind: str = "data", entry_kind: str = "identity"
+) -> dict[str, Noul | Score]:
     hop_question = (
         "Does `student.rationale` describe the identity or role hop named in `ground_truth.hop_name`?"
         if hop_kind == "identity"
@@ -295,10 +322,7 @@ def _questions(hop_kind: str, sink_kind: str = "data") -> dict[str, Noul | Score
     )
     return {
         "names_entry": Noul(
-            instructions=(
-                "Does `student.rationale` identify the same initial access "
-                "as `ground_truth.entry_name`?"
-            ),
+            instructions=ENTRY_QUESTIONS.get(entry_kind, ENTRY_QUESTIONS["identity"])
         ),
         "names_identity_hop": Noul(instructions=hop_question),
         "names_sink": Noul(instructions=sink_question),

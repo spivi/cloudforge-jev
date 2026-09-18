@@ -38,8 +38,16 @@ The entry question asked three ways on the 15 correct writeups: "identify the sa
 | largest move of one entry probability | 0.98 to 0.01 | 0.78 to 0.44 |
 
 Jev's flips cluster on the families whose entry is a phrase ("anyone on the internet,
-unauthenticated"), where "start from the same place" does not fit the thing it points at; the
-wording is one string in code and was fixed once.
+unauthenticated"), where "start from the same place" does not fit the thing it points at.
+The fix was to word the entry question by the kind of entry, the way the sink question is
+worded by the kind of ending: one wording for an identity, one for public access, one for
+another account. Measured on the seven phrase-entry families of the seed-17 packs, same
+correct writeups, 29 calls: the correct answer on the external-account entry
+(`cross_account_trust`) went from 0.63 to 0.88, the other six moved by 0.02 to 0.08 either
+way and all seven sit at or above 0.7 (mean 0.84 to 0.86). The wrong-risk writeups stayed
+at 0.03 to 0.32 on the entry, with one exception: the `public_data_exposure` decoy, which is
+itself a bucket "open to anyone", went from 0.07 to 0.68 on the entry alone. It does start
+from the internet; the hop and the sink still hold it at miss.
 
 Three identical runs of Jev on the same 15 writeups, same state: over 45 Nouls the spread had a
 median of 0.02 and a maximum of 0.08, and two labs that sit within a few hundredths of 0.7 changed

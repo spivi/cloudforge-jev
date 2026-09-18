@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Self
 
 import pytest
 
@@ -23,6 +24,7 @@ def test_path_hops_identity_chain():
     hops = _path_hops(nodes, ["n1", "n2", "n3"], [])
     assert hops == {
         "entry": "public-endpoint",
+        "entry_kind": "identity",
         "hop": "DeployRole",
         "hop_kind": "identity",
         "sink": "customer-exports",
@@ -56,6 +58,7 @@ def test_path_hops_owning_account_entry():
     ]
     hops = _path_hops(nodes, ["n1", "n2"], [])
     assert hops["entry"] == "anyone on the internet, unauthenticated"
+    assert hops["entry_kind"] == "public"
     assert hops["sink"] == "customer-exports"
 
 
@@ -66,6 +69,7 @@ def test_path_hops_external_account_entry():
     ]
     hops = _path_hops(nodes, ["n1", "n2"], [])
     assert hops["entry"] == "the external account acct-999"
+    assert hops["entry_kind"] == "external"
 
 
 def test_path_hops_single_node():
@@ -73,6 +77,7 @@ def test_path_hops_single_node():
     hops = _path_hops(nodes, ["n1"], [])
     assert hops == {
         "entry": "DeployRole",
+        "entry_kind": "identity",
         "hop": "",
         "hop_kind": "identity",
         "sink": "DeployRole",
@@ -153,6 +158,7 @@ def test_state_ground_truth_has_only_the_expected_keys(lab_pack: Path):
     state = _state(lab_pack, "some writeup")
     assert set(state["ground_truth"].keys()) == {
         "entry_name",
+        "entry_kind",
         "hop_name",
         "hop_kind",
         "sink_name",
@@ -167,6 +173,7 @@ def test_state_rationale_is_stripped(lab_pack: Path):
     assert state["student"]["rationale"] == "the writeup with padding"
     assert set(state["ground_truth"].keys()) == {
         "entry_name",
+        "entry_kind",
         "hop_name",
         "hop_kind",
         "sink_name",
@@ -282,6 +289,15 @@ def test_verdict_short_path_caps_at_depth_two():
     )
 
 
+def test_entry_question_wording_follows_the_entry_kind() -> None:
+    identity = judge_lab._questions("identity", "data")["names_entry"].instructions
+    public = judge_lab._questions("resource", "data", "public")["names_entry"].instructions
+    external = judge_lab._questions("identity", "role", "external")["names_entry"].instructions
+    assert "same initial access" in identity
+    assert "no credentials" in public
+    assert "another account" in external
+
+
 def test_sink_question_wording_follows_the_sink_kind() -> None:
     data = judge_lab._questions("identity", "data")["names_sink"].instructions
     role = judge_lab._questions("identity", "role")["names_sink"].instructions
@@ -294,7 +310,7 @@ def test_chain_is_kept_for_the_cap_but_not_sent_to_jev(monkeypatch, lab_pack) ->
 
     class _Client:
         def __init__(self, **_: object) -> None: ...
-        def __enter__(self) -> _Client:
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, *_: object) -> None: ...

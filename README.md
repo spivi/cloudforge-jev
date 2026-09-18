@@ -30,7 +30,7 @@ One request, four atomic questions over the same state:
 
 | Question | Primitive | Meaning |
 |---|---|---|
-| `names_entry` | Noul | Same initial access as the labeled path? |
+| `names_entry` | Noul | Same initial access as the labeled path? Worded for a name when the entry is an identity, for a phrase when it is public access or another account |
 | `names_identity_hop` | Noul | Same hop that grants the access: the first identity after the entry, or the misconfigured resource when the path has none (a public bucket, a shared snapshot) |
 | `names_sink` | Noul | Names what the attacker reaches, per `ground_truth.sink_kind` (data, secret, key, role, image, queue, snapshot, database, vault) |
 | `depth` | Score | How far the writeup walks the chain, four levels |

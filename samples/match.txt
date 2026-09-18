@@ -1,2 +1,3 @@
-GitHub Actions OIDC assumes the DeployRole. DeployRole can iam:PassRole the RuntimeRole.
-RuntimeRole then reads the customer-exports bucket that holds customer export data.
+GitHub Actions OIDC assumes the DeployRole. DeployRole can iam:PassRole its way to the
+RuntimeRole. RuntimeRole reads the customer-exports bucket, so the customer export data is
+what the CI identity reaches.
