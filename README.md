@@ -11,6 +11,19 @@ to judge whether the paragraph names the same entry, identity hop, and sink.
 cloudforge stays hermetic and no TypeSafe dependency lands in the OSS product;
 the code here owns the thresholds and Jev returns the probabilities.
 
+## Run it
+
+```bash
+git clone https://github.com/spivi/cloudforge-jev.git && cd cloudforge-jev
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+echo 'TYPESAFE_API_KEY=<your key>' > .env
+.venv/bin/python judge_lab.py --lab samples/lab --rationale samples/match.txt
+```
+
+`samples/lab` is the instructor pack of one `ci_cd_iam_chain` lab written by cloudforge 1.4.0
+(seed 7), so the first grade needs nothing but a key. `samples/miss.txt` is the paragraph about
+the wrong risk. To grade your own labs, point `--lab` at any pack `cloudforge lab` wrote.
+
 ## What Jev is doing
 
 One request, four atomic questions over the same state:

@@ -1,0 +1,30 @@
+{
+  "paths": [
+    {
+      "id": "n03_3169/path-critical-01",
+      "severity": "critical",
+      "nodes": [
+        "n08_3169/cicd-github",
+        "n11_3169/role-deploy",
+        "n10_3169/role-ingest-worker",
+        "n01_3169/role-release-orchestrator",
+        "n04_3169/role-runtime",
+        "n27_3169/s3-customer-exports",
+        "n02_3169/data-customer-exports"
+      ],
+      "edges": [
+        "n08_3169/cicd-github->assumes->n11_3169/role-deploy",
+        "n11_3169/role-deploy->can_pass_role->n10_3169/role-ingest-worker",
+        "n10_3169/role-ingest-worker->can_pass_role->n01_3169/role-release-orchestrator",
+        "n01_3169/role-release-orchestrator->can_pass_role->n04_3169/role-runtime",
+        "n04_3169/role-runtime->can_read->n27_3169/s3-customer-exports",
+        "n27_3169/s3-customer-exports->stores_sensitive_data->n02_3169/data-customer-exports"
+      ],
+      "explanation": "GitHub Actions OIDC assumes DeployRole; DeployRole can iam:PassRole IngestWorkerRole; IngestWorkerRole can iam:PassRole ReleaseOrchestratorRole; ReleaseOrchestratorRole can iam:PassRole RuntimeRole; RuntimeRole holds broad s3:Get*/List* on the sensitive customer-exports bucket -> full read of customer data via CI.",
+      "sink_kind": "data",
+      "target": "n02_3169/data-customer-exports",
+      "hop": "n11_3169/role-deploy"
+    }
+  ],
+  "notes": []
+}

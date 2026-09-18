@@ -1,0 +1,89 @@
+{
+  "findings": [
+    {
+      "id": "n03_3169/find-passrole-01",
+      "severity": "critical",
+      "family": "iam_passrole_risk",
+      "resource_ids": [
+        "n11_3169/role-deploy",
+        "n10_3169/role-ingest-worker",
+        "n01_3169/role-release-orchestrator",
+        "n04_3169/role-runtime",
+        "n22_3169/pol-deploy-passrole"
+      ],
+      "expected_scanner_visibility": "partial",
+      "ground_truth": "DeployRole can pass RuntimeRole, completing the CI-to-data chain.",
+      "remediation": "Scope iam:PassRole to the exact RuntimeRole ARN and add a role condition."
+    },
+    {
+      "id": "n03_3169/find-s3read-01",
+      "severity": "high",
+      "family": "iam_excessive_privilege",
+      "resource_ids": [
+        "n04_3169/role-runtime",
+        "n25_3169/pol-runtime-s3read",
+        "n27_3169/s3-customer-exports"
+      ],
+      "expected_scanner_visibility": "visible",
+      "ground_truth": "RuntimeRole has broader S3 read than intended over the exports bucket.",
+      "remediation": "Replace s3:Get*/List* wildcards with least-privilege object prefixes."
+    },
+    {
+      "id": "n03_3169/find-logging-01",
+      "severity": "medium",
+      "family": "s3_logging_missing",
+      "resource_ids": [
+        "n27_3169/s3-customer-exports",
+        "n16_3169/trail-main"
+      ],
+      "expected_scanner_visibility": "visible",
+      "ground_truth": "The sensitive bucket has no access logging / CloudTrail data events.",
+      "remediation": "Enable S3 access logging and CloudTrail data events for the bucket."
+    },
+    {
+      "id": "n03_3169/find-sg-01",
+      "severity": "medium",
+      "family": "security_group_overexposed",
+      "resource_ids": [
+        "n13_3169/sg-web",
+        "n19_3169/subnet-public-a"
+      ],
+      "expected_scanner_visibility": "visible",
+      "ground_truth": "web-sg allows ingress from 0.0.0.0/0.",
+      "remediation": "Restrict ingress from 0.0.0.0/0 to known corporate/CI CIDRs."
+    },
+    {
+      "id": "n03_3169/find-fp-01",
+      "severity": "low",
+      "family": "public_looking_bucket_with_compensating_control",
+      "resource_ids": [
+        "n15_3169/s3-public-assets"
+      ],
+      "expected_scanner_visibility": "visible",
+      "ground_truth": "benign",
+      "remediation": "None needed: public read is intentional; a bucket policy limits it to GetObject."
+    },
+    {
+      "id": "n04_3169/find-decoy-broad-01",
+      "severity": "low",
+      "family": "iam_excessive_privilege",
+      "resource_ids": [
+        "n29_3169/pol-legacy-support-read"
+      ],
+      "expected_scanner_visibility": "visible",
+      "ground_truth": "benign: LegacySupportReadPolicy grants s3:Get*/List* but is attached to a dead-end role with no path to any sensitive sink; documents the broad-looking grant without asserting real risk.",
+      "remediation": "None needed: dead-end decoy; no chain reaches a sensitive resource."
+    },
+    {
+      "id": "n05_3169/find-fp-01",
+      "severity": "low",
+      "family": "public_looking_bucket_with_compensating_control",
+      "resource_ids": [
+        "n12_3169/s3-open-data"
+      ],
+      "expected_scanner_visibility": "visible",
+      "ground_truth": "benign",
+      "remediation": "None needed: an explicit-deny bucket policy blocks anonymous access despite the public-looking attribute."
+    }
+  ]
+}

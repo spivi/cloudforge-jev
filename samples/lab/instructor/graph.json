@@ -1,0 +1,681 @@
+{
+  "nodes": [
+    {
+      "id": "n26_3169/acct-main",
+      "type": "Account",
+      "name": "staging-account-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n21_3169/vpc-staging",
+      "type": "VPC",
+      "name": "staging-vpc-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {
+        "cidr": "10.0.0.0/16"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n19_3169/subnet-public-a",
+      "type": "Subnet",
+      "name": "public-a-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {
+        "cidr": "10.0.1.0/24"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n13_3169/sg-web",
+      "type": "SecurityGroup",
+      "name": "web-sg-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {
+        "ingress_cidr": "0.0.0.0/0"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n08_3169/cicd-github",
+      "type": "CICDIdentity",
+      "name": "github-actions-oidc-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n11_3169/role-deploy",
+      "type": "IAMRole",
+      "name": "DeployRole-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n04_3169/role-runtime",
+      "type": "IAMRole",
+      "name": "RuntimeRole-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "critical"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n22_3169/pol-deploy-passrole",
+      "type": "IAMPolicy",
+      "name": "DeployPassRolePolicy-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {
+        "actions": [
+          "iam:PassRole"
+        ],
+        "resource": "arn:aws:iam::000000000000:role/RuntimeRole"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n25_3169/pol-runtime-s3read",
+      "type": "IAMPolicy",
+      "name": "RuntimeS3ReadPolicy-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {
+        "actions": [
+          "s3:Get*",
+          "s3:List*",
+          "iam:CreatePolicyVersion",
+          "iam:SetDefaultPolicyVersion",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "sqs:ReceiveMessage",
+          "sqs:SendMessage",
+          "secretsmanager:GetSecretValue"
+        ],
+        "resource": "arn:aws:s3:::customer-exports/*"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n27_3169/s3-customer-exports",
+      "type": "S3Bucket",
+      "name": "customer-exports-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "critical"
+      },
+      "attributes": {
+        "logging": "disabled"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n15_3169/s3-public-assets",
+      "type": "S3Bucket",
+      "name": "public-assets-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {
+        "compensating_control": "true"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n18_3169/app-analytics-exporter",
+      "type": "Application",
+      "name": "analytics-exporter-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n02_3169/data-customer-exports",
+      "type": "DataSet",
+      "name": "customer-export-data-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "critical"
+      },
+      "attributes": {
+        "classification": "restricted"
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n16_3169/trail-main",
+      "type": "LogTrail",
+      "name": "main-trail-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n10_3169/role-ingest-worker",
+      "type": "IAMRole",
+      "name": "IngestWorkerRole-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n01_3169/role-release-orchestrator",
+      "type": "IAMRole",
+      "name": "ReleaseOrchestratorRole-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "high"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n28_3169/role-queue-poller",
+      "type": "IAMRole",
+      "name": "QueuePollerRole-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {},
+      "origin": "core"
+    },
+    {
+      "id": "n17_3169/pol-queue-poll",
+      "type": "IAMPolicy",
+      "name": "QueuePollPolicy-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {
+        "actions": [
+          "sqs:GetQueueAttributes"
+        ]
+      },
+      "origin": "core"
+    },
+    {
+      "id": "n23_3169/role-legacy-support",
+      "type": "IAMRole",
+      "name": "LegacySupportRole-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {},
+      "origin": "decoy"
+    },
+    {
+      "id": "n29_3169/pol-legacy-support-read",
+      "type": "IAMPolicy",
+      "name": "LegacySupportReadPolicy-3169",
+      "tags": {
+        "env": "prod",
+        "owner": "infra-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {
+        "actions": [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        "resource": "arn:aws:s3:::legacy-support-scratch/*"
+      },
+      "origin": "decoy"
+    },
+    {
+      "id": "n12_3169/s3-open-data",
+      "type": "S3Bucket",
+      "name": "open-data-exports-3169",
+      "tags": {
+        "env": "stage",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {
+        "public_access": "enabled",
+        "compensating_control": "true"
+      },
+      "origin": "false_positive"
+    },
+    {
+      "id": "n07_3169/s3-audit-evidence",
+      "type": "S3Bucket",
+      "name": "audit-evidence-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "data-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {},
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n09_3169/trail-audit-evidence",
+      "type": "LogTrail",
+      "name": "trail-audit-evidence-3169",
+      "tags": {
+        "env": "prod",
+        "owner": "platform-team",
+        "app": "data-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {},
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n24_3169/data-audit-evidence",
+      "type": "DataSet",
+      "name": "audit-evidence-files-3169",
+      "tags": {
+        "env": "prod",
+        "owner": "platform-team",
+        "app": "data-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {
+        "classification": "restricted"
+      },
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n20_3169/s3-app-config",
+      "type": "S3Bucket",
+      "name": "app-config-store-3169",
+      "tags": {
+        "env": "preprod",
+        "owner": "infra-team",
+        "app": "etl-runner"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {},
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n00_3169/trail-app-config",
+      "type": "LogTrail",
+      "name": "trail-app-config-3169",
+      "tags": {
+        "env": "preprod",
+        "owner": "infra-team",
+        "app": "etl-runner"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {},
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n05_3169/data-app-config",
+      "type": "DataSet",
+      "name": "app-config-values-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "platform-team",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {
+        "classification": "restricted"
+      },
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n03_3169/s3-ml-features",
+      "type": "S3Bucket",
+      "name": "ml-feature-store-3169",
+      "tags": {
+        "env": "sandbox",
+        "owner": "data-eng",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {},
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n14_3169/trail-ml-features",
+      "type": "LogTrail",
+      "name": "trail-ml-features-3169",
+      "tags": {
+        "env": "sandbox",
+        "owner": "data-eng",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "low"
+      },
+      "attributes": {},
+      "origin": "compensating_control"
+    },
+    {
+      "id": "n06_3169/data-ml-features",
+      "type": "DataSet",
+      "name": "feature-vectors-3169",
+      "tags": {
+        "env": "staging",
+        "owner": "data-eng",
+        "app": "analytics-exporter"
+      },
+      "security": {
+        "criticality": "medium"
+      },
+      "attributes": {
+        "classification": "restricted"
+      },
+      "origin": "compensating_control"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n08_3169/cicd-github",
+      "to": "n11_3169/role-deploy",
+      "type": "assumes",
+      "security": {
+        "risk": "high"
+      }
+    },
+    {
+      "from": "n11_3169/role-deploy",
+      "to": "n22_3169/pol-deploy-passrole",
+      "type": "attached_policy",
+      "security": {
+        "risk": "high"
+      }
+    },
+    {
+      "from": "n04_3169/role-runtime",
+      "to": "n25_3169/pol-runtime-s3read",
+      "type": "attached_policy",
+      "security": {
+        "risk": "high"
+      }
+    },
+    {
+      "from": "n04_3169/role-runtime",
+      "to": "n27_3169/s3-customer-exports",
+      "type": "can_read",
+      "security": {
+        "risk": "critical"
+      }
+    },
+    {
+      "from": "n27_3169/s3-customer-exports",
+      "to": "n02_3169/data-customer-exports",
+      "type": "stores_sensitive_data",
+      "security": {
+        "risk": "critical"
+      }
+    },
+    {
+      "from": "n18_3169/app-analytics-exporter",
+      "to": "n08_3169/cicd-github",
+      "type": "deployed_by",
+      "security": {
+        "risk": "medium"
+      }
+    },
+    {
+      "from": "n27_3169/s3-customer-exports",
+      "to": "n18_3169/app-analytics-exporter",
+      "type": "belongs_to_app",
+      "security": {
+        "risk": "low"
+      }
+    },
+    {
+      "from": "n13_3169/sg-web",
+      "to": "n19_3169/subnet-public-a",
+      "type": "exposed_to_internet",
+      "security": {
+        "risk": "high"
+      }
+    },
+    {
+      "from": "n19_3169/subnet-public-a",
+      "to": "n18_3169/app-analytics-exporter",
+      "type": "belongs_to_app",
+      "security": {
+        "risk": "low"
+      }
+    },
+    {
+      "from": "n15_3169/s3-public-assets",
+      "to": "n19_3169/subnet-public-a",
+      "type": "exposed_to_internet",
+      "security": {
+        "risk": "low"
+      }
+    },
+    {
+      "from": "n11_3169/role-deploy",
+      "to": "n10_3169/role-ingest-worker",
+      "type": "can_pass_role",
+      "security": {
+        "risk": "critical"
+      }
+    },
+    {
+      "from": "n10_3169/role-ingest-worker",
+      "to": "n01_3169/role-release-orchestrator",
+      "type": "can_pass_role",
+      "security": {
+        "risk": "critical"
+      }
+    },
+    {
+      "from": "n01_3169/role-release-orchestrator",
+      "to": "n04_3169/role-runtime",
+      "type": "can_pass_role",
+      "security": {
+        "risk": "critical"
+      }
+    },
+    {
+      "from": "n08_3169/cicd-github",
+      "to": "n28_3169/role-queue-poller",
+      "type": "assumes",
+      "security": {
+        "risk": "low"
+      }
+    },
+    {
+      "from": "n28_3169/role-queue-poller",
+      "to": "n17_3169/pol-queue-poll",
+      "type": "attached_policy",
+      "security": {
+        "risk": "low"
+      }
+    },
+    {
+      "from": "n23_3169/role-legacy-support",
+      "to": "n29_3169/pol-legacy-support-read",
+      "type": "attached_policy",
+      "security": {
+        "risk": "low"
+      }
+    },
+    {
+      "from": "n07_3169/s3-audit-evidence",
+      "to": "n09_3169/trail-audit-evidence",
+      "type": "logs_to",
+      "security": {
+        "risk": "none"
+      }
+    },
+    {
+      "from": "n07_3169/s3-audit-evidence",
+      "to": "n24_3169/data-audit-evidence",
+      "type": "stores_sensitive_data",
+      "security": {
+        "risk": "none"
+      }
+    },
+    {
+      "from": "n20_3169/s3-app-config",
+      "to": "n00_3169/trail-app-config",
+      "type": "logs_to",
+      "security": {
+        "risk": "none"
+      }
+    },
+    {
+      "from": "n20_3169/s3-app-config",
+      "to": "n05_3169/data-app-config",
+      "type": "stores_sensitive_data",
+      "security": {
+        "risk": "none"
+      }
+    },
+    {
+      "from": "n03_3169/s3-ml-features",
+      "to": "n14_3169/trail-ml-features",
+      "type": "logs_to",
+      "security": {
+        "risk": "none"
+      }
+    },
+    {
+      "from": "n03_3169/s3-ml-features",
+      "to": "n06_3169/data-ml-features",
+      "type": "stores_sensitive_data",
+      "security": {
+        "risk": "none"
+      }
+    }
+  ]
+}
