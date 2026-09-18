@@ -108,3 +108,7 @@ hundredths, and by more on borderline answers; that is what the review band is f
 
 Without `TYPESAFE_API_KEY` the sidecar exits with an error and the lab is
 untouched.
+
+The measurements behind the essay (stress writeups, a local model on the same inputs, wording
+sensitivity, repeat runs, the weird inputs, a blind second reader, the depth ladder) are in
+[docs/measurements.md](docs/measurements.md).
